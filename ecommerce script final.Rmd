@@ -1,0 +1,418 @@
+---
+title: "ecommerce script"
+author: "Eleanor Pulsipher, Sarah Hellmann, Isabel de Obaldia, Ryan Boden"
+date: "11/19/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Packages Used:
+```{r message=FALSE}
+library(haven)
+library(tidyr)
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(janitor)
+library(ggpubr)
+```
+
+To Make a trimmed dataframe:
+```{r, message=FALSE}
+ecommerce <- read_csv("Ecommerce_dataset.csv")
+
+ecommerce_trimmed <- ecommerce %>% select(order_total_items, order_id, product_id, seller_id, order_price, order_freight_value, order_value, payment_type, payment_installments, main_payment_method, avg_review_score, order_est_delivery_date, order_delivered_time, order_delivered_date, customer_id, customer_zip_code_prefix, customer_city, customer_state, product_description_lenght, product_photos_qty, distance, category_D1, category_D2, category_D3, category_D4, category_D5, category_D6, product_height_cm, product_weight_g, product_length_cm, product_width_cm)
+```
+**Interesting Findings and Recommendations 1 and 2**
+
+By product id (which are the most ordered products)
+```{r, message=FALSE}
+by_product_id <- ecommerce %>%
+  group_by(product_id)%>%
+  summarise(count =n())%>%
+  arrange(desc(count))
+```
+By seller id (which sellers are the most active)
+```{r, message=FALSE}
+by_seller_id <- ecommerce%>%
+  group_by(seller_id)%>%
+  summarise(count = n())%>%
+  arrange(desc(count))
+```
+Average review score in products (average review score across all products)
+```{r}
+overall_avg_review_score <- mean(ecommerce$avg_review_score, na.rm= T)
+```
+By customer location (from which cities do most customers order from)
+```{r, message=FALSE}
+by_location <- ecommerce%>%
+  group_by(customer_city)%>%
+  summarise(count=n())%>%
+  arrange(desc(count))
+```
+Approximation of number of products ordered per city
+```{r, message=FALSE}
+products_locations <- ecommerce%>%
+  group_by(customer_city, single_product)%>%
+  summarize(product_sum= sum(single_product))
+```
+By customer state (from which states do most customers order from)
+```{r, message=FALSE}
+by_state <- ecommerce%>%
+  group_by(customer_state)%>%
+  summarise(count=n())%>%
+  arrange(desc(count))
+```
+Customer Unique ID
+```{r, message=FALSE}
+by_unique_id <- ecommerce%>%
+  group_by(customer_unique_id, avg_review_score)%>%
+  summarise(count=n())
+```
+Average review scores
+```{r}
+avg_review_score_5<-filter(by_unique_id, avg_review_score == 5)
+avg_review_score_4<-filter(by_unique_id, avg_review_score == 4)
+avg_review_score_3<-filter(by_unique_id, avg_review_score == 3)
+avg_review_score_2<-filter(by_unique_id, avg_review_score == 2)
+avg_review_score_1<-filter(by_unique_id, avg_review_score == 1)
+```
+By Product Category
+```{r, message=FALSE}
+
+product_category <- ecommerce%>%
+                  group_by(product_category_name)%>%
+                  summarise(count=n())%>%
+                  arrange(desc(count))
+```
+By seller city and state
+
+```{r, message=FALSE}
+by_seller_city <- ecommerce%>%
+                group_by(seller_city)%>%
+                summarize(count=n())%>%
+                arrange(desc(count))
+
+by_seller_state <- ecommerce%>%
+  group_by(seller_state)%>%
+  summarize(count=n())%>%
+  arrange(desc(count))
+```
+
+
+Satisfaction scores of top products 
+``` {r}
+ecommerce%>% 
+  filter(product_category_name == 'cama_mesa_banho')%>%
+  summarize(avg_satisfaction = mean(avg_review_score))
+
+ecommerce%>% 
+  filter(product_category_name == 'beleza_saude')%>%
+  summarize(avg_satisfaction = mean(avg_review_score))
+
+ecommerce%>% 
+  filter(product_category_name == 'esporte_lazer')%>%
+  summarize(avg_satisfaction = mean(avg_review_score))
+
+
+ecommerce%>% 
+  filter(product_category_name == 'informatica_acessorios')%>%
+  summarize(avg_satisfaction = mean(avg_review_score))
+
+
+ecommerce%>% 
+  filter(product_category_name == 'moveis_decoracao')%>%
+  summarize(avg_satisfaction = mean(avg_review_score))
+
+
+ecommerce%>% 
+  filter(product_category_name == 'utilidades_domesticas')%>%
+  summarize(avg_satisfaction = mean(avg_review_score))
+
+
+ecommerce%>% 
+  filter(product_category_name == 'relogios_presentes')%>%
+  summarize(avg_satisfaction = mean(avg_review_score))
+
+ecommerce%>% 
+  filter(product_category_name == 'telefonia')%>%
+  summarize(avg_satisfaction = mean(avg_review_score))
+
+
+ecommerce%>% 
+  filter(product_category_name == 'automotivo')%>%
+  summarize(avg_satisfaction = mean(avg_review_score))
+
+ecommerce%>% 
+  filter(product_category_name == 'brinquedos')%>%
+  summarize(avg_satisfaction = mean(avg_review_score))
+```
+
+
+**Recommendation 3 -**
+To add shipping disparity variable:
+```{r}
+ecommerce_trimmed <- ecommerce_trimmed %>% mutate(shipping_disparity = order_est_delivery_date-order_delivered_date)
+
+ecommerce_trimmed$shipping_disparity <- as.numeric(ecommerce_trimmed$shipping_disparity, units="days")
+```
+To find summary statistics for disparity:
+```{r}
+disparity_summary <- ecommerce_trimmed %>% filter(!is.na(shipping_disparity)) %>% summarise(avg_shipping_disparity = mean(shipping_disparity), median_shipping_disparity = median(shipping_disparity), max_shipping_disparity = max(shipping_disparity), min_shipping_disparity = min(shipping_disparity), sd_time_disparity = sd(shipping_disparity), IQR_disparity = IQR(shipping_disparity))
+
+print(disparity_summary)
+```
+Linear regression for disparity: 
+```{r fig.width = 7, fig.height = 2.69, dpi = 96}
+library(regress)
+library(sandwich)
+library(survival)
+shipping_result <- regress(
+  ecommerce_trimmed, 
+  rvar = "shipping_disparity", 
+  evar = c(
+    "order_price", "order_freight_value", "customer_state", 
+    "distance", "product_height_cm", "product_weight_g", "product_length_cm", 
+    "product_width_cm"
+  )
+)
+
+```
+To create "northeast" factor variable:
+```{r}
+ecommerce_trimmed <-  mutate(ecommerce_trimmed, Northeast = ifelse(customer_state %in% 'AL'|customer_state %in% 'BA'|customer_state %in% 'CE'| customer_state %in% 'MA'| customer_state %in% 'PA'|customer_state %in% 'PB'|customer_state %in% 'PE'|customer_state %in% 'PI'|customer_state %in% 'RN'|customer_state %in% 'RR'|customer_state %in% 'SE'|customer_state %in% 'TO', "1", "0"))
+
+ecommerce_trimmed$Northeast <- factor(ecommerce_trimmed$Northeast)
+```
+T-test 1: northeast and review scores:
+```{r fig.width = 7, fig.height = 4.31, dpi = 96}
+library(ggpubr)
+result <- compare_means(
+  data=ecommerce_trimmed, 
+  var1 = "Northeast", 
+  var2 = "avg_review_score", 
+  alternative = "greater"
+)
+summary(result, show = FALSE)
+```
+T-test 2: northeast and shipping disparity
+```{r fig.width = 7, fig.height = 4.31, dpi = 96}
+result <- compare_means(
+  data = ecommerce_trimmed, 
+  var1 = "Northeast", 
+  var2 = "shipping_disparity", 
+  alternative = "greater"
+)
+summary(result, show = FALSE)
+```
+
+**Recommendation 4 - **
+Summary stats for Payment types:
+```{r, message=FALSE}
+payment_summary <- ecommerce_trimmed %>% group_by(main_payment_method) %>% summarise(mean_order_revenue = mean(order_price), mean_items_ordered = mean(order_total_items), mean_satisfaction_score = mean(avg_review_score))
+```
+
+voucher t test for order value:
+```{r fig.width = 7, fig.height = 4.31, dpi = 96}
+result <- compare_means(
+  data = ecommerce_trimmed, 
+  var1 = "main_payment_method", 
+  var2 = "order_value", 
+  alternative = "greater", 
+  conf_lev = 0.97
+)
+summary(result, show = FALSE)
+plot(result, plots = "scatter", custom = FALSE)
+```
+
+voucher t test for items ordered
+```{r fig.width = 7, fig.height = 4.31, dpi = 96}
+result <- compare_means(
+  data=ecommerce_trimmed, 
+  var1 = "main_payment_method", 
+  var2 = "order_total_items", 
+  alternative = "greater", 
+  conf_lev = 0.97
+)
+summary(result, show = FALSE)
+plot(result, plots = "scatter", custom = FALSE)
+```
+
+voucher t test for review scores
+```{r fig.width = 7, fig.height = 4.31, dpi = 96}
+result <- compare_means(
+  data=ecommerce_trimmed, 
+  var1 = "main_payment_method", 
+  var2 = "avg_review_score", 
+  alternative = "greater", 
+  conf_lev = 0.97
+)
+summary(result, show = FALSE)
+```
+
+**Recommendation 5**
+
+```{r}
+library(haven)
+#Data frame of count of category purchases by state:
+#Category 1: Auto and Industrial
+cat1 <- ecommerce %>% 
+  select(customer_state, category_D1) %>%
+  group_by(customer_state) %>%
+  filter(category_D1 == 1) %>%
+  count() %>%
+  rename(Auto.Industrial = n)
+cat1 <- as.data.frame(cat1)
+
+#Category 2: books
+cat2 <- ecommerce %>%
+  select(customer_state, category_D2) %>%
+  group_by(customer_state) %>%
+  filter(category_D2 == 1) %>%
+  count() %>%
+  rename(Books = n) 
+cat2 <- as.data.frame(cat2)
+#missing in cat2(books): AP (row 4), RR (row 22)
+cat2addrow4 <- cat2 %>%
+  add_row(customer_state = 'AP', Books = 0, .before = 4)
+cat2complete <- cat2addrow4 %>%
+  add_row(customer_state = 'RR', Books = 0, .before = 22)
+
+#Category 3: Electronics
+cat3 <- ecommerce %>%
+  select(customer_state, category_D3) %>%
+  group_by(customer_state) %>%
+  filter(category_D3 == 1) %>%
+  count()  %>%
+  rename(Electronics = n)
+cat3 <- as.data.frame(cat3)
+
+#Category 4: Fashion
+cat4 <- ecommerce %>%
+  select(customer_state, category_D4) %>%
+  group_by(customer_state) %>%
+  filter(category_D4 == 1) %>%
+  count()  %>%
+  rename(Fashion = n)
+cat4 <- as.data.frame(cat4)
+
+#Category 5: Home Goods
+cat5 <- ecommerce %>%
+  select(customer_state, category_D5) %>%
+  group_by(customer_state) %>%
+  filter(category_D5 == 1) %>%
+  count()  %>%
+  rename(HomeGoods = n)
+cat5 <- as.data.frame(cat5)
+
+#Category 6: Office
+cat6 <- ecommerce %>%
+  select(customer_state, category_D6) %>%
+  group_by(customer_state) %>%
+  filter(category_D6 == 1) %>%
+  count()  %>%
+  rename(Office = n)
+cat6 <- as.data.frame(cat6)
+
+#Combine categories:
+categoriesCombined <- cbind(cat1, cat2complete, cat3, cat4, cat5, cat6)
+
+#Change row names and drop state columns:
+row.names(categoriesCombined) <- categoriesCombined[ ,1]
+categoriesByState <- categoriesCombined[,-c(1,3,5,7,9,11)]
+
+#Data as a matrix:
+categoriesByState.mat <- as.matrix(categoriesByState)
+
+#CLUSTERING:
+#dist matrix:
+d <- dist(categoriesByState.mat)
+#Clustering Algorithm:
+c <- hclust(d)
+#Plot the Dendrogram:
+plot(c)
+#Cut into K:
+cut <-  cutree(c, k = 5)
+dfCut <- as.data.frame(cut)
+```
+
+**Recommendation 6**
+
+installments summary statistics:
+```{r}
+installments_summary <- ecommerce_trimmed %>% summarise(avg_installments = mean(payment_installments), median_installments = median(payment_installments), max_installments = max(payment_installments), IQR_installments = IQR(payment_installments), sd_installments = sd(payment_installments))
+print(installments_summary)
+```
+
+Regression between installments and satisfaction scores:
+```{r fig.width = 7, fig.height = 2.69, dpi = 96}
+installments_effect <- regress(
+  ecommerce_trimmed, 
+  rvar = "avg_review_score", 
+  evar = "payment_installments"
+)
+summary(result, conf_lev = 0.96)
+```
+
+To create long_payment variable:
+```{r}
+ecommerce_trimmed <- mutate(ecommerce_trimmed, Long_Payment = ifelse(payment_installments > 11, "1", "0"))
+```
+
+To compare long payment satisfaction mean:
+```{r}
+long_mean <- ecommerce_trimmed %>% filter(Long_Payment == 1) %>% summarise(mean_satisfaction = mean(avg_review_score))
+
+short_mean <- ecommerce_trimmed %>% filter(Long_Payment == 0) %>% summarise(mean_satisfaction = mean(avg_review_score))
+
+short_mean > long_mean
+```
+
+**Recommendation 7**
+```{r}
+str(ecommerce)
+
+options(scipen = 999, digits=3)
+
+
+ecommerce$review_score <- as.integer(ecommerce$review_score)
+ecommerce$product_photos_qty <- as.integer(ecommerce$product_photos_qty)
+
+
+test <- glm(formula= review_score ~ product_photos_qty, data=ecommerce, na.action = na.omit)
+
+summary(test)
+exp(0.01163)
+
+#As Photo Quantity by 1, the odds of buying increase 1%.
+
+ecommerce %>% 
+  summarize(max_photos = max(product_photos_qty, na.rm=T), mean_photos = mean(product_photos_qty, na.rm = T), min_photos = min(product_photos_qty, na.rm = T))
+
+ecom1 <- ecommerce %>% 
+  transmute(product_photos_qty, review_score) %>% 
+  group_by(product_photos_qty) %>% 
+  transmute(product_photos_qty, review_score)
+
+ecom2 <- na.omit(ecom1)
+
+j <- table(ecom2$product_photos_qty)
+j
+
+48028 * .01
+
+#NA data
+(nrow(ecommerce) - sum(j)) / sum(j)
+
+#Percentages
+k <- j[1:6]/nrow(j)
+sum(k) + (nrow(ecommerce) - sum(j)) / sum(j)
+
+z <- j[7:19]/sum(j)
+1-sum(z)
+```
+
+
